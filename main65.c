@@ -155,6 +155,7 @@ typedef struct PACKED {
 
 int cmd_let(void);
 int cmd_err(void);
+int cmd_rem(void);
 int cmd_print(void);
 int cmd_poke(void);
 int cmd_list(void);
@@ -194,11 +195,13 @@ static subentry substack[MAXSUB+1];
 #define TOK_LET     (0 + MINTOKEN)
 #define TOK_TO      (1 + MINTOKEN)
 #define TOK_STEP    (2 + MINTOKEN)
+#define TOK_REM     (3 + MINTOKEN)
 
 uint8_t tokentab[] = 
     "leT"
     "tO"
     "steP"
+    "reM"
     "prinT"
     "pokE"
     "lisT"
@@ -217,6 +220,7 @@ cmdfun cmdarr[] = {
     cmd_let, 
     cmd_err, 
     cmd_err, 
+    cmd_rem, 
     cmd_print, 
     cmd_poke, 
     cmd_list,
@@ -233,6 +237,7 @@ cmdfun cmdarr[] = {
 };
                    
 enum toktypes toktyp[] = {
+    TOK_CMD, 
     TOK_CMD, 
     TOK_CMD, 
     TOK_CMD, 
@@ -347,10 +352,12 @@ uint8_t tokenize(uint8_t *b) {
     uint8_t *p;
     uint8_t tok;
     uint8_t quot;
+    uint8_t rem;
  
     s = b;
     d = b;
     quot = 0;
+    rem = 0;
   
 
     while (*s != 0) {
@@ -359,7 +366,7 @@ uint8_t tokenize(uint8_t *b) {
         tok = MINTOKEN;
         p = s;
         if (*s == '"') quot = 1-quot;
-        if (quot) {
+        if (quot || rem) {
             *d++ = *s++;
         }
         else if (*s == ' ') {
@@ -384,6 +391,7 @@ uint8_t tokenize(uint8_t *b) {
             }
             if (*t != '\0') {
                 *d++ = tok;
+                if (tok == TOK_REM) rem = 1;
             }
             else {
                 s = p;
@@ -404,22 +412,23 @@ void printtok(uint8_t tok) {
     uint8_t c;
     uint8_t s;
     
-    s = toktyp[tok-MINTOKEN];
     
     if ((tok < MAXTOKEN) && (tok >= MINTOKEN)) {
+        s = toktyp[tok-MINTOKEN];
         t = tokentab;
         while (tok > MINTOKEN) {
             while (islower(*t++));
             tok--;
         }
-        if (s == TOK_CMD) putchar(' ');
+        //if (s == TOK_CMD) putchar(' ');
         do {
             putchar(toupper(c = *t++));
         } while (islower(c));
         if (s == TOK_CMD) putchar(' ');
     }
     else
-        putchar(tok);
+        if (tok == ':') putstr(" : ");
+        else putchar(tok);
 }
 
 
@@ -722,6 +731,12 @@ int expression() {
 
 int cmd_err(void) {
     err = ERR_SYN;
+    return err;
+}
+
+
+int cmd_rem(void) {
+    while (*exptr != '\0') exptr++;
     return err;
 }
 
